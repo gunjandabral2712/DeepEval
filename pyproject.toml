@@ -1,0 +1,18 @@
+[project]
+name = "deepeval-python-test-framework"
+version = "0.1.0"
+description = "A sample Python test framework that uses DeepEval for evaluation and pytest for tests."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "deepeval==4.0.7"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest"
+]
+
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
