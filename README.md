@@ -103,12 +103,3 @@ The included GitHub Actions workflow `.github/workflows/ci.yml` installs depende
 
 - Running metrics that call external LLMs will incur latency and may require API keys and costs.
 - The `DummyModel` used in tests is only suitable for deterministic unit tests; it should not be used for production evaluations where a real LLM is required.
-
-If you want, I can also:
-- Add example outputs and a small `examples/` runner script.
-- Add a coverage report step to CI.
-- Create the GitHub repository and push the code for you.
-
----
-Happy testing — open an issue or ask if you want more metrics or CI enhancements.
-
