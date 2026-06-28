@@ -1,40 +1,123 @@
 # DeepEval Python Test Framework
 
-This repository demonstrates a clear separation between the application code under test and the test framework.
+This repository demonstrates a practical integration between application unit tests and DeepEval-driven evaluation metrics. It shows how to keep application code, DeepEval evaluation adapters, and test cases clearly separated so teams can run fast unit tests while also exercising richer evaluation metrics.
 
-## Structure
+**Key ideas**
+- Application code lives under `app/` and is agnostic to the test framework.
+- DeepEval adapters and helpers live under `deep_eval_integration/` and are used only by tests.
+- `tests/` contains both standard `pytest` unit tests and DeepEval integration tests so you can run either or both.
 
-- `app/` - application code being tested.
-- `deep_eval_integration/` - DeepEval evaluation adapter and integration code.
-- `tests/` - pytest-based test suite.
+## Repository structure
 
-## Goals
+- `app/` — application code under test (example: `calculator.py`).
+- `deep_eval_integration/` — a small adapter (`DeepEvalEvaluator`) that builds `LLMTestCase` instances and calls `deepeval.evaluate()`.
+- `tests/` — `pytest` test files, including an integration test which demonstrates using multiple DeepEval metrics.
+- `.github/workflows/ci.yml` — CI workflow that runs `pytest` on push/PRs.
 
-- Use DeepEval as the evaluation application when available.
-- Keep application logic separate from test logic.
-- Use `pytest` for standard unit testing and `deepeval` for evaluation metrics.
+## Installation
 
-## Usage
-
-Install dependencies:
+Create and activate a Python virtual environment, then install dependencies:
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Run unit tests:
+## Running tests
+
+Run the full test suite with `pytest`:
 
 ```bash
 python -m pytest
 ```
 
-Run DeepEval evaluation via Python:
+You can also run a single test file:
 
 ```bash
-python -c "from deep_eval_integration.evaluator import DeepEvalEvaluator; from app.calculator import add, divide, is_prime; evaluator = DeepEvalEvaluator(); cases = [evaluator.build_test_case('addition', 'add(2,3)', add(2,3), 5), evaluator.build_test_case('division', 'divide(10,2)', divide(10,2), 5.0), evaluator.build_test_case('prime-check', 'is_prime(7)', is_prime(7), True)]; result = evaluator.evaluate_cases(cases); print(result)"
+python -m pytest tests/test_deepeval_integration.py -q
 ```
 
-## Notes
+## DeepEval integration overview
 
-- `deepeval` is used for evaluation metrics, while `pytest` is used for standard test assertions.
-- The sample DeepEval integration uses `ExactMatchMetric` to compare actual and expected outputs.
+The adapter `DeepEvalEvaluator` (in `deep_eval_integration/evaluator.py`) exposes two main helpers:
+
+- `build_test_case(name, input_text, actual_output, expected_output)` — builds `deepeval.test_case.LLMTestCase` objects from local inputs/outputs.
+- `evaluate_cases(test_cases, metrics=None)` — runs `deepeval.evaluate()` for the provided test cases and metric instances.
+
+Example (from tests):
+
+- Exact match metric (strict equality): `ExactMatchMetric()`
+- Answer relevancy metric (semantic relevance, threshold 0.0–1.0): `AnswerRelevancyMetric(threshold=0.7)`
+
+In the integration test we demonstrate using both metrics together so you can combine exact string checks with semantic checks.
+
+## Avoiding external API keys in CI / local tests
+
+Some DeepEval metrics use an LLM under the hood (OpenAI, Anthropic, etc.). To make the test suite runnable without external API keys, the integration test provides a small `DummyModel` shim implementing the minimal `DeepEvalBaseLLM` interface. This lets the `AnswerRelevancyMetric` return deterministic, structured responses during tests.
+
+If you want to run metrics against a real LLM, configure provider keys in your environment (examples):
+
+- `OPENAI_API_KEY` for OpenAI models
+- `GOOGLE_API_KEY` / provider-specific keys for other providers
+
+Or pass an explicit model instance to `AnswerRelevancyMetric(model=...)` when constructing the metric.
+
+## Example usage (from tests)
+
+1. Build test cases from application outputs:
+
+```py
+from deep_eval_integration.evaluator import DeepEvalEvaluator
+from app.calculator import add
+
+e = DeepEvalEvaluator()
+case = e.build_test_case('addition', 'add(2,3)', add(2,3), 5)
+```
+
+2. Define metrics and run evaluation:
+
+```py
+from deepeval.metrics import ExactMatchMetric, AnswerRelevancyMetric
+
+exact = ExactMatchMetric()
+relevancy = AnswerRelevancyMetric(threshold=0.7)  # 0.0–1.0
+result = e.evaluate_cases([case], metrics=[exact, relevancy])
+```
+
+3. Inspect the evaluation result (scores, pass/fail, verbose logs): the returned object is a `deepeval.evaluate.types.EvaluationResult` containing `test_results` with per-metric `MetricData`.
+
+## Continuous integration
+
+The included GitHub Actions workflow `.github/workflows/ci.yml` installs dependencies and runs `pytest` for every push and PR on `main`.
+
+## Pushing to GitHub
+
+To publish this repository on GitHub (example):
+
+```bash
+git remote add origin git@github.com:gunjandabral2712/deepeval-python-test-framework.git
+git branch -M main
+git push -u origin main
+```
+
+## Extending the framework
+
+- Add more DeepEval metrics from `deepeval.metrics` (e.g., `SummarizationMetric`, `HallucinationMetric`).
+- Use `DeepEvalEvaluator.evaluate_cases(..., metrics=[...])` to mix metrics.
+- Replace `DummyModel` with a real `DeepEvalBaseLLM` implementation when you want to evaluate against a real LLM.
+
+## Notes & caveats
+
+- Running metrics that call external LLMs will incur latency and may require API keys and costs.
+- The `DummyModel` used in tests is only suitable for deterministic unit tests; it should not be used for production evaluations where a real LLM is required.
+
+If you want, I can also:
+- Add example outputs and a small `examples/` runner script.
+- Add a coverage report step to CI.
+- Create the GitHub repository and push the code for you.
+
+---
+Happy testing — open an issue or ask if you want more metrics or CI enhancements.
+

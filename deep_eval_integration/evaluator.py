@@ -30,10 +30,17 @@ class DeepEvalEvaluator:
             multimodal=False,
         )
 
-    def evaluate_cases(self, test_cases: Iterable[LLMTestCase]):
-        """Evaluate a list of DeepEval test cases and return the evaluation result."""
+    def evaluate_cases(self, test_cases: Iterable[LLMTestCase], metrics: list | None = None):
+        """Evaluate a list of DeepEval test cases and return the evaluation result.
+
+        Args:
+            test_cases: iterable of `LLMTestCase` objects.
+            metrics: optional list of DeepEval metric instances. If None, uses
+                `ExactMatchMetric` by default.
+        """
+        metrics = metrics or [self.metric]
         return evaluate(
             test_cases=list(test_cases),
-            metrics=[self.metric],
+            metrics=metrics,
             identifier=self.identifier,
         )
