@@ -92,15 +92,6 @@ result = e.evaluate_cases([case], metrics=[exact, relevancy])
 
 The included GitHub Actions workflow `.github/workflows/ci.yml` installs dependencies and runs `pytest` for every push and PR on `main`.
 
-## Pushing to GitHub
-
-To publish this repository on GitHub (example):
-
-```bash
-git remote add origin git@github.com:gunjandabral2712/deepeval-python-test-framework.git
-git branch -M main
-git push -u origin main
-```
 
 ## Extending the framework
 
