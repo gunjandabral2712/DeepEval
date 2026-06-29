@@ -9,16 +9,41 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      # Prevent DeepEval from prompting to send telemetry during CI
+      DEEPEVAL_TELEMETRY_OPT_OUT: "YES"
+
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.14'
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Create reports directory
+        run: mkdir -p reports/deepeval
+
       - name: Run tests
         run: |
-          pytest -q
+          pytest \
+            --junitxml=reports/junit.xml \
+            --html=reports/pytest-report.html \
+            --self-contained-html \
+            -v
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            reports/junit.xml
+            reports/pytest-report.html
+            reports/deepeval/
+          retention-days: 14
